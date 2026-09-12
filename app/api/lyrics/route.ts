@@ -178,9 +178,16 @@ export async function GET(req: Request) {
 
         instrumental: data.instrumental,
 
-        plainLyrics: data.plainLyrics,
+        plainLyricsOriginal: data.plainLyrics,
 
-        lines: syncedLines,
+plainLyricsRomanized: data.plainLyrics
+  ? data.plainLyrics
+      .split("\n")
+      .map((line: string) => romanize(line))
+      .join("\n")
+  : null,
+
+lines: syncedLines,
       },
       {
         headers: {
