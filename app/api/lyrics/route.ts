@@ -2,9 +2,12 @@ import Sanscript from "@indic-transliteration/sanscript";
 
 function cleanRomanHindi(text: string) {
   return text
-    .replace(/ā/g, "a")
-    .replace(/ī/g, "i")
-    .replace(/ū/g, "u")
+    .normalize("NFKD")
+
+    // common Hindi transliteration cleanup
+    .replace(/ā/g, "aa")
+    .replace(/ī/g, "ee")
+    .replace(/ū/g, "oo")
     .replace(/ṛ/g, "r")
     .replace(/ṝ/g, "r")
     .replace(/ṅ/g, "n")
@@ -17,8 +20,34 @@ function cleanRomanHindi(text: string) {
     .replace(/ḥ/g, "h")
     .replace(/ṃ/g, "n")
     .replace(/ṁ/g, "n")
-    .replace(/’/g, "'")
+
+    // remove combining marks / leftover nukta characters
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/़/g, "")
+
+    // fix awkward anusvara/chandrabindu style output
+    .replace(/~/g, "n")
+
+    // common natural Hindi spellings
+    .replace(/\bhaan\b/gi, "haan")
+    .replace(/\bhaa\b/gi, "haan")
+    .replace(/\bkaaphii\b/gi, "kaafi")
+    .replace(/\bkaafi\b/gi, "kaafi")
+    .replace(/\bsamaan\b/gi, "sama")
+    .replace(/\bkhabara\b/gi, "khabar")
+    .replace(/\blafaza\b/gi, "lafz")
+    .replace(/\bpyaara\b/gi, "pyar")
+    .replace(/\bpyaar\b/gi, "pyar")
+    .replace(/\bdiivaanii\b/gi, "deewani")
+    .replace(/\bdeevaanii\b/gi, "deewani")
+    .replace(/\bhairaanii\b/gi, "hairani")
+
+    // general cleanup
+    .replace(/aa+/g, "aa")
+    .replace(/ee+/g, "ee")
+    .replace(/oo+/g, "oo")
     .replace(/\s+/g, " ")
+    .replace(/’/g, "'")
     .trim();
 }
 
