@@ -1,3 +1,70 @@
+import Sanscript from "@indic-transliteration/sanscript";
+
+function cleanRomanHindi(text: string) {
+  return text
+    .replace(/ā/g, "a")
+    .replace(/ī/g, "i")
+    .replace(/ū/g, "u")
+    .replace(/ṛ/g, "r")
+    .replace(/ṝ/g, "r")
+    .replace(/ṅ/g, "n")
+    .replace(/ñ/g, "n")
+    .replace(/ṇ/g, "n")
+    .replace(/ṭ/g, "t")
+    .replace(/ḍ/g, "d")
+    .replace(/ś/g, "sh")
+    .replace(/ṣ/g, "sh")
+    .replace(/ḥ/g, "h")
+    .replace(/ṃ/g, "n")
+    .replace(/ṁ/g, "n")
+    .replace(/’/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function romanize(text: string) {
+  try {
+    const roman = Sanscript.t(
+      text,
+      "devanagari",
+      "iast"
+    );
+
+    return cleanRomanHindi(roman);
+  } catch {
+    return text;
+  }
+}
+
+function parseSyncedLyrics(syncedLyrics: string | null) {
+  if (!syncedLyrics) return [];
+
+  return syncedLyrics
+    .split("\n")
+    .map((line) => {
+      const match = line.match(
+        /^\[(\d+):(\d+(?:\.\d+)?)\]\s?(.*)$/
+      );
+
+      if (!match) return null;
+
+      const minutes = Number(match[1]);
+      const seconds = Number(match[2]);
+      const text = match[3].trim();
+
+      const timeMs = Math.round(
+        (minutes * 60 + seconds) * 1000
+      );
+
+      return {
+        time_ms: timeMs,
+        original: text,
+        romanized: romanize(text),
+      };
+    })
+    .filter(Boolean);
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -9,8 +76,12 @@ export async function GET(req: Request) {
 
     if (!track || !artist) {
       return Response.json(
-        { error: "track and artist are required" },
-        { status: 400 }
+        {
+          error: "track and artist are required",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
@@ -63,23 +134,40 @@ export async function GET(req: Request) {
       });
     }
 
-    return Response.json({
-      found: true,
-      synced: !!data.syncedLyrics,
+    const syncedLines = parseSyncedLyrics(
+      data.syncedLyrics
+    );
 
-      track: data.trackName,
-      artist: data.artistName,
-      album: data.albumName,
+    return Response.json(
+      {
+        found: true,
+        synced: syncedLines.length > 0,
 
-      instrumental: data.instrumental,
+        track: data.trackName,
+        artist: data.artistName,
+        album: data.albumName,
 
-      plainLyrics: data.plainLyrics,
-      syncedLyrics: data.syncedLyrics,
-    });
+        instrumental: data.instrumental,
+
+        plainLyrics: data.plainLyrics,
+
+        lines: syncedLines,
+      },
+      {
+        headers: {
+          "Content-Type":
+            "application/json; charset=utf-8",
+        },
+      }
+    );
   } catch (error: any) {
     return Response.json(
-      { error: error.message },
-      { status: 500 }
+      {
+        error: error.message,
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
