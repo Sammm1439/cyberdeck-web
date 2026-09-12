@@ -182,7 +182,6 @@ const WORD_OVERRIDES: Record<string, string> = {
   "मिलूँ": "milun",
 
   "बता": "bata",
-  "बता": "bata",
   "बता दे": "bata de",
 
   "देख": "dekh",
