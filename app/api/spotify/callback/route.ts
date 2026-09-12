@@ -1,3 +1,10 @@
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
@@ -41,5 +48,30 @@ export async function GET(req: Request) {
     return Response.json(tokens, { status: tokenResponse.status });
   }
 
-  return Response.json(tokens);
+  if (!tokens.refresh_token) {
+    return Response.json(
+      { error: "Spotify did not return a refresh token" },
+      { status: 500 }
+    );
+  }
+
+  const { error } = await supabase
+    .from("spotify_auth")
+    .upsert({
+      id: 1,
+      refresh_token: tokens.refresh_token,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    return Response.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
+
+  return Response.json({
+    success: true,
+    message: "Spotify connected successfully"
+  });
 }
