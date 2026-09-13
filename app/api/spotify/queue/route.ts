@@ -51,7 +51,7 @@ export async function GET() {
   try {
     const accessToken = await getAccessToken();
 
-    const response = await fetch(
+    const spotifyResponse = await fetch(
       "https://api.spotify.com/v1/me/player/queue",
       {
         headers: {
@@ -61,42 +61,82 @@ export async function GET() {
       }
     );
 
-    const data = await response.json();
+    if (!spotifyResponse.ok) {
+      let error;
 
-    if (!response.ok) {
-      return Response.json(data, {
-        status: response.status,
+      try {
+        error = await spotifyResponse.json();
+      } catch {
+        error = {
+          error: `Spotify returned ${spotifyResponse.status}`,
+        };
+      }
+
+      return Response.json(error, {
+        status: spotifyResponse.status,
       });
     }
 
-    const formatTrack = (track: any) => {
-      if (!track) return null;
+    const data = await spotifyResponse.json();
 
-      return {
+    const current = data.currently_playing
+      ? {
+          id: data.currently_playing.id,
+          uri: data.currently_playing.uri,
+          name: data.currently_playing.name,
+
+          artists:
+            data.currently_playing.artists?.map(
+              (artist: any) => artist.name
+            ) ?? [],
+
+          album:
+            data.currently_playing.album?.name ?? "",
+
+          artwork:
+            data.currently_playing.album?.images?.[0]?.url ?? "",
+
+          duration_ms:
+            data.currently_playing.duration_ms ?? 0,
+        }
+      : null;
+
+    const queue =
+      data.queue?.map((track: any) => ({
         id: track.id,
+
+        // IMPORTANT — ESP32 needs this
+        uri: track.uri,
+
         name: track.name,
-        artists: track.artists?.map(
-          (artist: any) => artist.name
-        ),
-        album: track.album?.name,
-        artwork: track.album?.images?.[0]?.url,
-        duration_ms: track.duration_ms,
-      };
-    };
+
+        artists:
+          track.artists?.map(
+            (artist: any) => artist.name
+          ) ?? [],
+
+        album:
+          track.album?.name ?? "",
+
+        artwork:
+          track.album?.images?.[0]?.url ?? "",
+
+        duration_ms:
+          track.duration_ms ?? 0,
+      })) ?? [];
 
     return Response.json({
-      currently_playing: formatTrack(
-        data.currently_playing
-      ),
-      queue:
-        data.queue?.map((track: any) =>
-          formatTrack(track)
-        ) ?? [],
+      currently_playing: current,
+      queue,
     });
   } catch (error: any) {
     return Response.json(
-      { error: error.message },
-      { status: 500 }
+      {
+        error: error.message,
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
