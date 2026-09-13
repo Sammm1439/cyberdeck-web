@@ -52,6 +52,7 @@ export async function POST(req: Request) {
 
     let url = "";
     let method = "POST";
+    let spotifyBody: string | undefined;
 
     switch (action) {
       case "play":
@@ -70,6 +71,22 @@ export async function POST(req: Request) {
 
       case "previous":
         url = "https://api.spotify.com/v1/me/player/previous";
+        break;
+
+      case "play_uri":
+        if (typeof body.uri !== "string" || !body.uri) {
+          return Response.json(
+            { error: "uri required" },
+            { status: 400 }
+          );
+        }
+
+        url = "https://api.spotify.com/v1/me/player/play";
+        method = "PUT";
+
+        spotifyBody = JSON.stringify({
+          uris: [body.uri],
+        });
         break;
 
       case "seek":
@@ -118,7 +135,11 @@ export async function POST(req: Request) {
       method,
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        ...(spotifyBody && {
+          "Content-Type": "application/json",
+        }),
       },
+      body: spotifyBody,
       cache: "no-store",
     });
 
@@ -128,7 +149,9 @@ export async function POST(req: Request) {
       try {
         error = await spotifyResponse.json();
       } catch {
-        error = { error: `Spotify returned ${spotifyResponse.status}` };
+        error = {
+          error: `Spotify returned ${spotifyResponse.status}`,
+        };
       }
 
       return Response.json(error, {
